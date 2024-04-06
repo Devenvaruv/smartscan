@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
+import { ref as storageRef, uploadBytes } from 'firebase/storage'; // Import necessary functions from Firebase storage
+import { storage } from './firebase-config'; // Import the pre-configured storage instance
 
-// CameraComponent definition
 function Camera() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -21,16 +22,17 @@ function Camera() {
       const context = canvasRef.current.getContext('2d');
       context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
       
-      // To save the image, you can then extract it from the canvas
-      const imageSrc = canvasRef.current.toDataURL('image/png');
-      
-      // For example, to download the image you could do:
-      const a = document.createElement('a');
-      a.href = imageSrc;
-      a.download = 'captured-image.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      // Convert canvas to blob for upload
+      canvasRef.current.toBlob(blob => {
+        const imageRef = storageRef(storage, `images/${new Date().toISOString()}.png`); // Create a reference to upload the file to Firebase Storage
+
+        // Upload the file
+        uploadBytes(imageRef, blob).then((snapshot) => {
+          console.log('Uploaded a blob or file!', snapshot);
+        }).catch((error) => {
+          console.error("Error uploading file", error);
+        });
+      }, 'image/png');
     }
   };
 
