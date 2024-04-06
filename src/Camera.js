@@ -1,16 +1,17 @@
 import React, { useRef, useState } from 'react';
-import { ref as storageRef, uploadBytes } from 'firebase/storage'; // Import necessary functions from Firebase storage
-import { storage } from './firebase-config'; // Import the pre-configured storage instance
-import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
+import { ref as storageRef, uploadBytes } from 'firebase/storage'; 
+import { storage } from './firebase-config'; 
+import 'bootstrap/dist/css/bootstrap.min.css'; 
 
 function Camera() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [capturedImage, setCapturedImage] = useState(null);
+  const [isFrontCamera, setIsFrontCamera] = useState(true); 
 
   const handleStartCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: isFrontCamera ? 'user' : 'environment' } });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
@@ -23,9 +24,13 @@ function Camera() {
     if (canvasRef.current && videoRef.current) {
       const context = canvasRef.current.getContext('2d');
       context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+      
+      // Convert canvas to blob for upload
       canvasRef.current.toBlob(blob => {
-        setCapturedImage(URL.createObjectURL(blob));
-        const imageRef = storageRef(storage, `images/${new Date().toISOString()}.png`); 
+        setCapturedImage(URL.createObjectURL(blob)); // Display the captured image
+        const imageRef = storageRef(storage, `images/${new Date().toISOString()}.png`); // Create a reference to upload the file to Firebase Storage
+
+        // Upload the file
         uploadBytes(imageRef, blob).then((snapshot) => {
           console.log('Uploaded a blob or file!', snapshot);
         }).catch((error) => {
@@ -35,6 +40,11 @@ function Camera() {
     }
   };
 
+  const handleSwitchCamera = () => {
+    setIsFrontCamera(!isFrontCamera); 
+    handleStartCamera(); 
+  };
+
   return (
     <div className="container text-center d-flex flex-column justify-content-between align-items-center" style={{ minHeight: '100vh' }}>
       <div>
@@ -42,6 +52,7 @@ function Camera() {
       </div>
       <div>
         <button className="btn btn-primary" onClick={handleStartCamera}>Start Camera</button>
+        <button className="btn btn-primary ml-2" onClick={handleSwitchCamera}>Switch Camera</button>
         <video ref={videoRef} autoPlay style={{ maxWidth: '100%', height: 'auto' }}></video>
         <canvas ref={canvasRef} style={{ width: '100%', maxWidth: '640px', height: 'auto', display: 'none' }}></canvas>
         <button className="btn btn-primary mt-3" onClick={handleCaptureImage}>Capture Image</button>
